@@ -3,6 +3,9 @@ library dart_codable;
 import 'dart:typed_data';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
+
+part 'decoder/bool_decoder.dart';
 part 'decoder/data_decoder.dart';
 part 'decoder/datetime_decoder.dart';
 part 'decoder/decodable.dart';

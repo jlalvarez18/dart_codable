@@ -1,33 +1,59 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:dart_codable/dart_codable.dart';
 
 void main() {
-  test('adds one to input values', () {
-    final json = <String, dynamic>{
-      'first_name': 'Juan',
-      'last_name': 'Alvarez',
-      'birthday': '1983-11-23',
-      'addresses': [
-        {'city': 'Round Rock', 'state': 'Texas'}
-      ],
-      'spouse': {
-        'first_name': 'Desaree',
-        'last_name': 'Alvarez',
-        'birthday': '1980-12-11',
-      }
-    };
+  final personJson = <String, dynamic>{
+    'first_name': 'John',
+    'last_name': 'Doe',
+    'birthday': '1983-11-23',
+    'is_married': 1,
+    'addresses': [
+      {'city': 'Round Rock', 'state': 'Texas'}
+    ],
+    'spouse': {
+      'first_name': 'Jane',
+      'last_name': 'Doe',
+      'birthday': '1980-12-11',
+      'is_married': 'True',
+    }
+  };
+
+  test('Person decoder', () {
+    final personDecoder =
+        Decoder((Decoder<Person> decoder) => Person.fromDecoder(decoder));
+    personDecoder.boolDecoder = BoolDecoder.lossy();
+
+    final person = personDecoder.decodeMap(personJson);
+
+    expect(person.fullName, 'John Doe');
+    expect(person.birthday, isNotNull);
+    expect(person.addresses, isNotEmpty);
+    expect(person.spouse, isNotNull);
+    expect(person.primaryCity, 'Round Rock');
+  });
+
+  test('json string', () {
+    final jsonList = [personJson];
+
+    final source = jsonEncode(jsonList);
 
     final personDecoder =
         Decoder((Decoder<Person> decoder) => Person.fromDecoder(decoder));
+    personDecoder.boolDecoder = BoolDecoder.lossy();
 
-    final person = personDecoder.decodeMap(json);
+    final people = personDecoder.decodeJsonList(source);
 
-    print(person.fullName);
-    print(person.birthday);
-    print(person.addresses);
-    print(person.spouse);
+    final person = people[0];
+
+    expect(person.fullName, 'John Doe');
+    expect(person.birthday, isNotNull);
+    expect(person.addresses, isNotEmpty);
+    expect(person.spouse, isNotNull);
+    expect(person.primaryCity, 'Round Rock');
   });
 }
 
@@ -39,6 +65,9 @@ class Person extends Decodable {
   final List<Address> addresses;
   final Person spouse;
 
+  final String primaryCity;
+  final bool isMarried;
+
   String get fullName => '$firstName $lastName';
 
   Person({
@@ -47,6 +76,8 @@ class Person extends Decodable {
     this.birthday,
     this.addresses,
     this.spouse,
+    this.primaryCity,
+    this.isMarried,
   });
 
   factory Person.fromDecoder(Decoder<Person> decoder) {
@@ -62,12 +93,18 @@ class Person extends Decodable {
 
     final spouse = container.tryDecodeDecodable('spouse', decoder);
 
+    final String primaryCity = container.tryDecode('addresses.0.city');
+
+    final bool isMarried = container.decode('is_married');
+
     return Person(
       firstName: firstName,
       lastName: lastName,
       birthday: birthday,
       addresses: addresses,
       spouse: spouse,
+      primaryCity: primaryCity,
+      isMarried: isMarried,
     );
   }
 

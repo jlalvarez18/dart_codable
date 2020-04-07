@@ -6,16 +6,20 @@ class KeyedDecodingContainer {
 
   KeyedDecodingContainer(this.decoder, this.map);
 
-  T decode<T>(String key) {
-    final value = map[key];
+  T decode<T>(String keyPath) {
+    assert(keyPath != null);
+
+    final value = map.getValue(keyPath);
 
     final container = SingleValueDecodingContainer(decoder, value);
 
     return container.decode();
   }
 
-  List<T> decodeList<T>(String key) {
-    final value = map[key] as List;
+  List<T> decodeList<T>(String keyPath) {
+    assert(keyPath != null);
+
+    final value = map.getValue(keyPath) as List;
 
     final list = value.map((e) {
       final container = SingleValueDecodingContainer(decoder, e);
@@ -26,62 +30,117 @@ class KeyedDecodingContainer {
     return list;
   }
 
-  D decodeDecodable<D extends Decodable>(String key, Decoder<D> decoder) {
-    final value = map[key] as Map<String, dynamic>;
+  D decodeDecodable<D extends Decodable>(String keyPath, Decoder<D> decoder) {
+    assert(keyPath != null);
+    assert(decoder != null);
 
-    final object = decoder.decodeMap(value);
+    final value = map.getValue(keyPath);
 
-    return object;
+    if (value is Map<String, dynamic>) {
+      final object = decoder.decodeMap(value);
+
+      return object;
+    }
+
+    throw 'Invalid type: ${value.runtimeType}';
   }
 
   List<D> decodeDecodableList<D extends Decodable>(
-      String key, Decoder<D> decoder) {
-    final listValue = map[key] as List<Map<String, dynamic>>;
+      String keyPath, Decoder<D> decoder) {
+    assert(keyPath != null);
+    assert(decoder != null);
 
-    final objects = listValue.map((e) => decoder.decodeMap(e)).toList();
+    final value = map.getValue(keyPath) as List;
+
+    final List<Map<String, dynamic>> list = List.castFrom(value);
+
+    final objects = list.map((e) => decoder.decodeMap(e)).toList();
 
     return objects;
   }
 
-  T tryDecode<T>(String key, {T defaultValue}) {
+  T tryDecode<T>(String keyPath, {T defaultValue}) {
     try {
-      return decode(key) ?? defaultValue;
+      return decode(keyPath) ?? defaultValue;
     } catch (e) {
       return defaultValue;
     }
   }
 
-  List<T> tryDecodeList<T>(String key, {List<T> defaultValue}) {
+  List<T> tryDecodeList<T>(String keyPath, {List<T> defaultValue}) {
     try {
-      return decodeList(key) ?? defaultValue;
+      return decodeList(keyPath) ?? defaultValue;
     } catch (e) {
       return defaultValue;
     }
   }
 
-  D tryDecodeDecodable<D extends Decodable>(String key, Decoder<D> decoder) {
+  D tryDecodeDecodable<D extends Decodable>(
+      String keyPath, Decoder<D> decoder) {
     try {
-      return decodeDecodable(key, decoder);
+      return decodeDecodable(keyPath, decoder);
     } catch (e) {
       return null;
     }
   }
 
   List<D> tryDecodeDecodableList<D extends Decodable>(
-      String key, Decoder<D> decoder) {
+      String keyPath, Decoder<D> decoder) {
     try {
-      return decodeDecodableList(key, decoder);
+      return decodeDecodableList(keyPath, decoder);
     } catch (e) {
       return null;
     }
   }
 
-  KeyedDecodingContainer nestedKeyedContainer(String key) {
-    final mapValue = map[key] as Map<String, dynamic>;
+  KeyedDecodingContainer nestedKeyedContainer(String keyPath) {
+    final value = map.getValue(keyPath);
 
-    return KeyedDecodingContainer(this.decoder, mapValue);
+    if (value is Map<String, dynamic>) {
+      return KeyedDecodingContainer(this.decoder, value);
+    }
+
+    throw 'Invalid type: ${value.runtimeType}';
   }
 
   SingleValueDecodingContainer singleValueContainer() =>
       SingleValueDecodingContainer(decoder, map);
+}
+
+extension MapKeyPath<V> on Map<String, V> {
+  /// Keypath can be a dot separated list of keys eg:
+  /// {
+  ///   'name': {
+  ///       'first': 'John',
+  ///       'last': 'Doe'
+  ///   }
+  /// }
+  /// final name = map.getValue('name.first');
+  /// print(name) => 'Juan'
+  ///
+  /// You can also include an index if the path contains a list eg:
+  /// {
+  ///   'addresses':
+  ///   [
+  ///     {'city': 'Round Rock', 'state': 'Texas'},
+  ///     {'city': 'Austin', 'state': 'Texas}
+  ///   ]
+  /// }
+  /// final primaryCity = map.getValue('addresses.0.city');
+  /// print(primaryCity) => 'Round Rock'
+  V getValue<V>(String keyPath) {
+    dynamic current = this;
+
+    keyPath.split('.').forEach((key) {
+      final maybeInt = int.tryParse(key);
+
+      if (maybeInt != null && current is List) {
+        current = current[maybeInt];
+      } else if (current is Map) {
+        current = current[key];
+      }
+    });
+
+    return (current as V);
+  }
 }

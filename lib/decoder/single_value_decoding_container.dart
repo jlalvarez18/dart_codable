@@ -17,8 +17,12 @@ class SingleValueDecodingContainer {
   }
 
   T _unbox<T>(dynamic value) {
-    if (T == String || T == bool) {
+    if (T == String) {
       return value as T;
+    }
+
+    if (T == bool) {
+      return decoder.boolDecoder.decode(value) as T;
     }
 
     if (T == int) {

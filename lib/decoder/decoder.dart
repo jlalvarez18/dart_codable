@@ -9,6 +9,7 @@ class Decoder<T extends Decodable> {
 
   DateTimeDecoder dateTimeDecoder = DateTimeDecoder.decodeString();
   DataDecoder dataDecoder = DataDecoder.decodeBase64();
+  BoolDecoder boolDecoder = BoolDecoder.defaultDecoder();
 
   dynamic _value;
 
@@ -38,5 +39,33 @@ class Decoder<T extends Decodable> {
     final objects = json.map((e) => decodeMap(e)).toList();
 
     return objects;
+  }
+
+  T decodeJsonMap(String jsonString) {
+    assert(jsonString != null);
+
+    final value = jsonDecode(jsonString);
+
+    if (value is Map) {
+      final Map<String, dynamic> map = Map.castFrom(value);
+
+      return decodeMap(map);
+    }
+
+    throw 'Invalid type: ${value.runtimeType}';
+  }
+
+  List<T> decodeJsonList(String jsonString) {
+    assert(jsonString != null);
+
+    final value = jsonDecode(jsonString);
+
+    if (value is List) {
+      final List<Map<String, dynamic>> list = List.castFrom(value);
+
+      return decodeList(list);
+    }
+
+    throw 'Invalid type: ${value.runtimeType}';
   }
 }

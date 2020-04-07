@@ -11,6 +11,6 @@ class DataDecoder {
 
   Uint8List decode(dynamic json) => _factory(json);
 
-  DataDecodableFactory _factory;
+  final DataDecodableFactory _factory;
   DataDecoder._(this._factory);
 }
